@@ -1,0 +1,35 @@
+# 💾 Otacon Autosave Tool for Unity
+
+A lightweight, customizable editor tool to prevent progress loss. It automatically saves your scenes and assets at your preferred intervals, with visual feedback directly in the Editor.
+
+---
+
+## 🚀 Features
+
+* **Automatic Saving:** Saves both your open scenes and project assets.
+* **Custom Intervals:** Set the time (in minutes) that fits your workflow.
+* **Visual Feedback:** Displays a notification with a custom image in the Scene View when a save occurs.
+* **Editor Integrated:** No need to attach scripts to GameObjects; it runs globally in the Editor.
+
+---
+
+## 📸 Screenshot
+
+![Otacon Autosave Tool Interface](Assets/Tools/OtaconAutoSaveTool/Screenshot.png)
+> *Replace the path above with the actual path to your screenshot image in the repository.*
+
+---
+
+## 🛠 Installation
+
+1.  **Download the Package:** Go to the [Releases](link-to-your-release) page and download `OtaconAutosave.unitypackage`.
+2.  **Import:** Assets -> Import Package
+
+---
+
+## 📖 How to Use
+
+1.  Open the configuration window via the top menu: **Tools > Autosave Config**.
+2.  **Toggle Enabled:** Turn the autosave on or off.
+3.  **Interval:** Enter the minutes between saves (e.g., 5 or 10).
+5.  Keep the window docked or closed; the tool will keep running in the background!
