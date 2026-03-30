@@ -16,40 +16,40 @@ public class OtaconAutosaveTool : EditorWindow
     // Image Texture
     private static Texture2D saveIcon;
 
-    [MenuItem("Tools/Autosave Config")]
+    [MenuItem("Tools/Otacon Autosave Config")]
     public static void ShowWindow()
     {
-        // Try to load icon when opening the window if it doesn't exist yet
         if (saveIcon == null) LoadIcon();
-        GetWindow<OtaconAutosaveTool>("Autosave");
+        GetWindow<OtaconAutosaveTool>("Otacon Autosave");
     }
 
-    // Load default icon
     private static void LoadIcon()
     {
-        // Ensure this path exactly matches your project structure
         saveIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Tools/OtaconAutosaveTool/Image/Otacon.png");
     }
 
-    // ERROR FIX: Use InitializeOnLoadMethod instead of a static constructor 
-    // to safely access EditorApplication.timeSinceStartup.
     [InitializeOnLoadMethod]
     private static void Initialize()
     {
-        // Runs safely once Unity has loaded the asset database
-        EditorApplication.update -= Update; // Prevent duplicate registrations
+        EditorApplication.update -= Update; 
         EditorApplication.update += Update;
     }
 
     private void OnEnable()
     {
-        // Load the icon when the window is enabled
         if (saveIcon == null) LoadIcon();
+        // Repaint the window frequently so the countdown looks smooth
+        EditorApplication.update += Repaint;
+    }
+
+    private void OnDisable()
+    {
+        // Stop repainting when window is closed to save resources
+        EditorApplication.update -= Repaint;
     }
 
     private void OnGUI()
     {
-        // Show icon on config screen
         if (saveIcon != null)
         {
             GUILayout.BeginHorizontal();
@@ -62,18 +62,29 @@ public class OtaconAutosaveTool : EditorWindow
         GUILayout.Label("Autosave Configuration", EditorStyles.boldLabel);
         
         enabled = EditorGUILayout.Toggle("Enabled", enabled);
+
+        // START CHANGE CHECK: Detect if the user modifies the interval
+        EditorGUI.BeginChangeCheck();
+        
         intervalMinutes = EditorGUILayout.FloatField("Interval (Minutes)", intervalMinutes);
 
-        // Clamping minimum interval to avoid infinite save loops
         if (intervalMinutes < 0.5f) intervalMinutes = 0.5f;
+
+        // IF CHANGED: Immediately recalculate the next save time
+        if (EditorGUI.EndChangeCheck())
+        {
+            ResetTimer();
+        }
 
         EditorGUILayout.Space();
         
-        // Lazy initialization of the timer
         if (nextSaveTime <= 0) ResetTimer();
 
         double timeRemaining = nextSaveTime - EditorApplication.timeSinceStartup;
-        GUILayout.Label($"Next save in: {(timeRemaining > 0 ? (int)timeRemaining : 0)} seconds");
+        
+        // Safety: If the remaining time is negative (e.g. after a sleep/wake cycle), force 0
+        int displaySeconds = (timeRemaining > 0) ? (int)timeRemaining : 0;
+        GUILayout.Label($"Next save in: {displaySeconds} seconds");
 
         if (GUILayout.Button("Save Now"))
         {
@@ -83,18 +94,16 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void Update()
     {
-        // PLAY MODE PROTECTION: Do not save while playing or paused to avoid data corruption
         if (!enabled || EditorApplication.isPlaying || EditorApplication.isPaused)
         {
             return;
         }
 
-        // Initialize timer if it hasn't started
         if (nextSaveTime <= 0) ResetTimer();
 
         if (EditorApplication.timeSinceStartup > nextSaveTime)
         {
-            // CRITICAL: We move the timer forward BEFORE saving to prevent a crash if the save takes too long
+            // CRITICAL: Move timer forward first
             ResetTimer();
             SaveProject();
         }
@@ -102,22 +111,18 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void SaveProject()
     {
-        // Execute the save process
         EditorSceneManager.SaveOpenScenes();
         AssetDatabase.SaveAssets();
         
-        // Ensure the icon is loaded for the notification
         if (saveIcon == null) LoadIcon();
 
-        // Check if the window is open to show notification there, otherwise use the Scene View
         if (HasOpenInstances<OtaconAutosaveTool>())
         {
-            OtaconAutosaveTool window = GetWindow<OtaconAutosaveTool>("Autosave");
+            OtaconAutosaveTool window = GetWindow<OtaconAutosaveTool>("Otacon Autosave");
             window.ShowNotification(new GUIContent(" Project Saved", saveIcon), 2.0f);
         }
         else if (SceneView.lastActiveSceneView != null)
         {
-            // Show popup in the Scene View if the window is closed
             SceneView.lastActiveSceneView.ShowNotification(new GUIContent(" Project Saved", saveIcon), 2.0f);
         }
 
@@ -126,7 +131,7 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void ResetTimer()
     {
-        // Reset the target time for the next save based on current startup time
+        // Re-calculates based on the current intervalMinutes value
         nextSaveTime = EditorApplication.timeSinceStartup + (intervalMinutes * 60);
     }
 }
