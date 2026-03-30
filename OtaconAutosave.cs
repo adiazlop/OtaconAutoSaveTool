@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 
-// I'm having random crashes with Unity on working on UVC, so I decided to implement a tool for Unity that handles autosaving for me
-// It will load an Otacon image from MGS2 to show that the process was made correctly
+// I'm having random crashes with Unity while working on UVC, so I decided to implement a tool that handles autosaving.
+// It loads an Otacon image from MGS2 to indicate that the process was completed correctly.
 
 [InitializeOnLoad]
 public class OtaconAutosaveTool : EditorWindow
@@ -19,7 +19,7 @@ public class OtaconAutosaveTool : EditorWindow
     [MenuItem("Tools/Autosave Config")]
     public static void ShowWindow()
     {
-        // Al abrir la ventana, intentamos cargar el icono si no existe
+        // Try to load icon when opening the window if it doesn't exist yet
         if (saveIcon == null) LoadIcon();
         GetWindow<OtaconAutosaveTool>("Autosave");
     }
@@ -27,28 +27,27 @@ public class OtaconAutosaveTool : EditorWindow
     // Load default icon
     private static void LoadIcon()
     {
-        // Asegúrate de que esta ruta coincida exactamente con la de tu proyecto
+        // Ensure this path exactly matches your project structure
         saveIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Tools/OtaconAutosaveTool/Image/Otacon.png");
     }
 
-    // 1. SOLUCIÓN AL ERROR: Usamos InitializeOnLoadMethod en lugar del constructor estático
+    // ERROR FIX: Use InitializeOnLoadMethod instead of a static constructor 
+    // to safely access EditorApplication.timeSinceStartup.
     [InitializeOnLoadMethod]
     private static void Initialize()
     {
-        // Esto se ejecuta de forma segura una vez que Unity ha cargado la base de datos de assets
-        EditorApplication.update -= Update; // Evitamos duplicados
+        // Runs safely once Unity has loaded the asset database
+        EditorApplication.update -= Update; // Prevent duplicate registrations
         EditorApplication.update += Update;
-        
-        // No llamamos a ResetTimer aquí directamente para evitar el error de ScriptableObject al arrancar
     }
 
-    void OnEnable()
+    private void OnEnable()
     {
-        // Cargamos el icono al habilitar la ventana
+        // Load the icon when the window is enabled
         if (saveIcon == null) LoadIcon();
     }
 
-    void OnGUI()
+    private void OnGUI()
     {
         // Show icon on config screen
         if (saveIcon != null)
@@ -60,22 +59,23 @@ public class OtaconAutosaveTool : EditorWindow
             GUILayout.EndHorizontal();
         }
 
-        GUILayout.Label("Configuración de Auto-Guardado", EditorStyles.boldLabel);
+        GUILayout.Label("Autosave Configuration", EditorStyles.boldLabel);
         
-        enabled = EditorGUILayout.Toggle("Activado", enabled);
-        intervalMinutes = EditorGUILayout.FloatField("Intervalo (Minutos)", intervalMinutes);
+        enabled = EditorGUILayout.Toggle("Enabled", enabled);
+        intervalMinutes = EditorGUILayout.FloatField("Interval (Minutes)", intervalMinutes);
 
+        // Clamping minimum interval to avoid infinite save loops
         if (intervalMinutes < 0.5f) intervalMinutes = 0.5f;
 
         EditorGUILayout.Space();
         
-        // Inicialización tardía del timer si es necesario
+        // Lazy initialization of the timer
         if (nextSaveTime <= 0) ResetTimer();
 
         double timeRemaining = nextSaveTime - EditorApplication.timeSinceStartup;
-        GUILayout.Label($"Próximo guardado en: {(timeRemaining > 0 ? (int)timeRemaining : 0)} segundos");
+        GUILayout.Label($"Next save in: {(timeRemaining > 0 ? (int)timeRemaining : 0)} seconds");
 
-        if (GUILayout.Button("Guardar ahora"))
+        if (GUILayout.Button("Save Now"))
         {
             SaveProject();
         }
@@ -83,48 +83,50 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void Update()
     {
-        // 2. BLOQUEO EN PLAY MODE: No guardar mientras jugamos
+        // PLAY MODE PROTECTION: Do not save while playing or paused to avoid data corruption
         if (!enabled || EditorApplication.isPlaying || EditorApplication.isPaused)
         {
             return;
         }
 
-        // Inicialización del timer por si acaso
+        // Initialize timer if it hasn't started
         if (nextSaveTime <= 0) ResetTimer();
 
         if (EditorApplication.timeSinceStartup > nextSaveTime)
         {
+            // CRITICAL: We move the timer forward BEFORE saving to prevent a crash if the save takes too long
+            ResetTimer();
             SaveProject();
         }
     }
 
     private static void SaveProject()
     {
-        // Save 
+        // Execute the save process
         EditorSceneManager.SaveOpenScenes();
         AssetDatabase.SaveAssets();
         
-        // Visual notification
+        // Ensure the icon is loaded for the notification
         if (saveIcon == null) LoadIcon();
 
-        // Buscamos si la ventana está abierta para mostrar la notificación allí
+        // Check if the window is open to show notification there, otherwise use the Scene View
         if (HasOpenInstances<OtaconAutosaveTool>())
         {
             OtaconAutosaveTool window = GetWindow<OtaconAutosaveTool>("Autosave");
-            window.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
+            window.ShowNotification(new GUIContent(" Project Saved", saveIcon), 2.0f);
         }
         else if (SceneView.lastActiveSceneView != null)
         {
-            // Si la ventana está cerrada, mostramos el popup en la vista de Escena
-            SceneView.lastActiveSceneView.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
+            // Show popup in the Scene View if the window is closed
+            SceneView.lastActiveSceneView.ShowNotification(new GUIContent(" Project Saved", saveIcon), 2.0f);
         }
 
-        Debug.Log($"<color=green>Proyecto guardado automáticamente a las {System.DateTime.Now:HH:mm:ss}</color>");
-        ResetTimer();
+        Debug.Log($"<color=green>Project saved automatically at {System.DateTime.Now:HH:mm:ss}</color>");
     }
 
     private static void ResetTimer()
     {
+        // Reset the target time for the next save based on current startup time
         nextSaveTime = EditorApplication.timeSinceStartup + (intervalMinutes * 60);
     }
 }
