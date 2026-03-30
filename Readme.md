@@ -1,14 +1,14 @@
-<h1 align="center">?? Otacon Autosave Tool for Unity</h1>
+<h1 align="center"> Otacon Autosave Tool for Unity</h1>
 
 <p align="center">
-  <img src="Assets/Tools/OtaconAutoSaveTool/Screenshot.png" width="450" alt="Otacon Autosave Interface">
+  <img src="Screenshot.png" width="450" alt="Otacon Autosave Interface">
 </p>
 
 A lightweight, customizable editor tool to prevent progress loss. It automatically saves your scenes and assets at your preferred intervals, with visual feedback directly in the Editor.
 
 ---
 
-## ?? Features
+## Features
 
 * **Automatic Saving:** Saves both your open scenes and project assets simultaneously.
 * **Custom Intervals:** Flexible timer (in minutes) to fit your specific workflow.
@@ -17,7 +17,7 @@ A lightweight, customizable editor tool to prevent progress loss. It automatical
 
 ---
 
-## ?? Installation
+##  Installation
 
 1.  **Download the Package:** Go to the [Releases](https://github.com/tu-usuario/tu-repo/releases) page and download `OtaconAutosave.unitypackage`.
 2.  **Import to Unity:** * Go to `Assets` > `Import Package` > `Custom Package...`
@@ -26,7 +26,7 @@ A lightweight, customizable editor tool to prevent progress loss. It automatical
 
 ---
 
-## ?? How to Use
+##  How to Use
 
 1.  **Open Config:** Navigate to the top menu: **Tools > Autosave Config**.
 2.  **Toggle Status:** Use the checkbox to enable or disable the autosave functionality.
@@ -35,7 +35,6 @@ A lightweight, customizable editor tool to prevent progress loss. It automatical
 
 ---
 
-## ?? Important Notes
+## ? Important Notes
 
 * **Play Mode:** To avoid data corruption or lag spikes, the tool **will not save** while Unity is in Play Mode.
-* **Meta Files:** If moving the tool manually, ensure you include the `.meta` files to keep the icon references intact.
