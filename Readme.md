@@ -35,6 +35,6 @@ A lightweight, customizable editor tool to prevent progress loss. It automatical
 
 ---
 
-## ? Important Notes
+##  Important Notes
 
 * **Play Mode:** To avoid data corruption or lag spikes, the tool **will not save** while Unity is in Play Mode.
