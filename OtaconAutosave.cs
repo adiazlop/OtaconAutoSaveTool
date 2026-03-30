@@ -2,8 +2,8 @@ using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 
-//I'm having random crashes with Unity on working on UVC, so I decided to implement a tool for Unity that handles autosaving for me
-//It will load an Otacon image from MGS2 to show that the process was made correctly
+// I'm having random crashes with Unity on working on UVC, so I decided to implement a tool for Unity that handles autosaving for me
+// It will load an Otacon image from MGS2 to show that the process was made correctly
 
 [InitializeOnLoad]
 public class OtaconAutosaveTool : EditorWindow
@@ -11,15 +11,15 @@ public class OtaconAutosaveTool : EditorWindow
     // Default variables
     private static float intervalMinutes = 5f;
     private static bool enabled = true;
+    private static double nextSaveTime;
     
     // Image Texture
     private static Texture2D saveIcon;
-    private static double nextSaveTime;
 
     [MenuItem("Tools/Autosave Config")]
     public static void ShowWindow()
     {
-        // On windows load, try to load icon if does not exists
+        // Al abrir la ventana, intentamos cargar el icono si no existe
         if (saveIcon == null) LoadIcon();
         GetWindow<OtaconAutosaveTool>("Autosave");
     }
@@ -27,14 +27,25 @@ public class OtaconAutosaveTool : EditorWindow
     // Load default icon
     private static void LoadIcon()
     {
-        // If you want to customiza the app, you can change the route here and put another image
+        // Asegúrate de que esta ruta coincida exactamente con la de tu proyecto
         saveIcon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Tools/OtaconAutosaveTool/Image/Otacon.png");
     }
 
-    static OtaconAutosaveTool()
+    // 1. SOLUCIÓN AL ERROR: Usamos InitializeOnLoadMethod en lugar del constructor estático
+    [InitializeOnLoadMethod]
+    private static void Initialize()
     {
+        // Esto se ejecuta de forma segura una vez que Unity ha cargado la base de datos de assets
+        EditorApplication.update -= Update; // Evitamos duplicados
         EditorApplication.update += Update;
-        ResetTimer();
+        
+        // No llamamos a ResetTimer aquí directamente para evitar el error de ScriptableObject al arrancar
+    }
+
+    void OnEnable()
+    {
+        // Cargamos el icono al habilitar la ventana
+        if (saveIcon == null) LoadIcon();
     }
 
     void OnGUI()
@@ -57,6 +68,10 @@ public class OtaconAutosaveTool : EditorWindow
         if (intervalMinutes < 0.5f) intervalMinutes = 0.5f;
 
         EditorGUILayout.Space();
+        
+        // Inicialización tardía del timer si es necesario
+        if (nextSaveTime <= 0) ResetTimer();
+
         double timeRemaining = nextSaveTime - EditorApplication.timeSinceStartup;
         GUILayout.Label($"Próximo guardado en: {(timeRemaining > 0 ? (int)timeRemaining : 0)} segundos");
 
@@ -68,7 +83,14 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void Update()
     {
-        if (!enabled || EditorApplication.isPlaying) return;
+        // 2. BLOQUEO EN PLAY MODE: No guardar mientras jugamos
+        if (!enabled || EditorApplication.isPlaying || EditorApplication.isPaused)
+        {
+            return;
+        }
+
+        // Inicialización del timer por si acaso
+        if (nextSaveTime <= 0) ResetTimer();
 
         if (EditorApplication.timeSinceStartup > nextSaveTime)
         {
@@ -83,19 +105,18 @@ public class OtaconAutosaveTool : EditorWindow
         AssetDatabase.SaveAssets();
         
         // Visual notification
-        if (saveIcon == null) LoadIcon(); // Makes sure we have the icon
+        if (saveIcon == null) LoadIcon();
 
-        // Looks for the open window, if not looks for the visual notification
-        EditorWindow windowToNotify = GetWindow<OtaconAutosaveTool>("Autosave", false);
-        if (windowToNotify == null)
+        // Buscamos si la ventana está abierta para mostrar la notificación allí
+        if (HasOpenInstances<OtaconAutosaveTool>())
         {
-            // Shows notification if windows is closed
-            SceneView.lastActiveSceneView.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
+            OtaconAutosaveTool window = GetWindow<OtaconAutosaveTool>("Autosave");
+            window.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
         }
-        else
+        else if (SceneView.lastActiveSceneView != null)
         {
-            // If it's open shows in window
-            windowToNotify.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
+            // Si la ventana está cerrada, mostramos el popup en la vista de Escena
+            SceneView.lastActiveSceneView.ShowNotification(new GUIContent(" Proyecto Guardado", saveIcon), 2.0f);
         }
 
         Debug.Log($"<color=green>Proyecto guardado automáticamente a las {System.DateTime.Now:HH:mm:ss}</color>");
@@ -104,7 +125,6 @@ public class OtaconAutosaveTool : EditorWindow
 
     private static void ResetTimer()
     {
-        //Reset timer when the time interval is finished
         nextSaveTime = EditorApplication.timeSinceStartup + (intervalMinutes * 60);
     }
 }
